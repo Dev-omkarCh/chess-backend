@@ -40,9 +40,14 @@ const userSchema = new mongoose.Schema({
         type: String,
         enum: ["Male", "Female", "Other"],
     },
-    refreshTokens : {
-        type: [String],
-        default: [],
+    refreshToken : {
+        type: String,
+        required: true,
+    },
+    role: {
+        type: String,
+        enum: ["user", "admin"],
+        default: "user",
     }
 }, { timestamps: true });
 
@@ -57,13 +62,20 @@ userSchema.pre('save', async function (next) {
 userSchema.set('toJSON', {
     transform: (doc, user) => {
         delete user.password;
-        delete user.refreshTokens;
+        delete user.refreshToken;
         delete user.__v; // Remove version key too!
         return user;
     }
 });
 
 // Custom Methods
+
+// It is used here because, if you ever decide to switch from bcryptjs to argon2 (a more modern hashing algorithm), 
+// you would have to search your entire project for every controller that uses bcrypt.compare()
+
+userSchema.methods.isPasswordCorrect = async function (password) {
+    return await bcryptjs.compare(password, this.password);
+}
 
 userSchema.methods.generateAccessToken = async function () {
     return jwt.sign(
