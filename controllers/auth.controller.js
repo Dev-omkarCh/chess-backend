@@ -7,8 +7,8 @@ import asyncHandler from "../utils/asyncHandler.js";
 export const generateAccessAndRefreshTokens = async (userId) => {
     try {
         const user = await User.findById(userId);
-        const accessToken = user.generateAccessToken();
-        const refreshToken = user.generateRefreshToken();
+        const accessToken = await user.generateAccessToken();
+        const refreshToken = await user.generateRefreshToken();
 
         user.refreshToken = refreshToken;
         await user.save({ validateBeforeSave: false });  // Skip validation for other fields
@@ -22,24 +22,28 @@ export const generateAccessAndRefreshTokens = async (userId) => {
 export const signup = asyncHandler(async (req, res) => {
     const { username, email, password, gender, fullName } = req.body;
 
+    console.log("Signup Request Body:", req.body); // Debugging line to check incoming data
+
     // Check if any field is missing or empty
     if ([username, email, password, gender, fullName].some((field) => field?.trim() === "")) {
         throw new ApiError(400, "All fields are required");
     }
-
     // Check if user with the same username or email already exists
     const existedUser = await User.findOne({ $or: [{ username }, { email }] });
     if (existedUser) {
         throw new ApiError(409, "User with email or username already exists");
     }
+    
+    const newUser = await User.create({ username, email, password, gender, fullName });
 
-    const user = await User.create({ username, email, password, gender, fullName });
-
-    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(newUser._id);
+    const user = await User.findByIdAndUpdate(newUser._id, {
+        refreshToken : refreshToken
+    });
 
     return res.status(200)
         .cookie("refreshToken", refreshToken, cookieOptions)
-        .clearCookie("accessToken", cookieOptions) // Clear any existing access token
+        .clearCookie("accessToken", accessToken, cookieOptions) // Clear any existing access token
         .json(
             new ApiResponse(200, { accessToken, user }, "Signup successful")
         );

@@ -38,11 +38,10 @@ const userSchema = new mongoose.Schema({
     },
     gender : {
         type: String,
-        enum: ["Male", "Female", "Other"],
+        enum: ["male", "female", "other"],
     },
     refreshToken : {
         type: String,
-        required: true,
     },
     role: {
         type: String,
@@ -52,10 +51,9 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Hash password before saving
-userSchema.pre('save', async function (next) {
-    if (!this.isModified('password')) return next();
+userSchema.pre('save', async function () {
+    if (!this.isModified('password')) return;
     this.password = await bcryptjs.hash(this.password, 10);
-    next();
 });
 
 // Customize JSON output to exclude sensitive fields
