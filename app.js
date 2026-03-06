@@ -20,6 +20,7 @@ app.use(cors({
 // Body Parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
 // Logging (Helpful for debugging mobile requests)
 
@@ -29,11 +30,13 @@ app.use(express.urlencoded({ extended: false }));
 
 
 import authRoutes from './routes/auth.routes.js';
+import userRoutes from './routes/user.routes.js';
+import cookieParser from 'cookie-parser';
 
 app.use((err, req, res, next) => {
     // 1. Determine the status code (Ensure it is a valid HTTP number)
     let statusCode = err.statusCode || 500;
-    
+
     // 2. If it's a Mongoose/MongoDB error, it might not have a valid HTTP status
     if (typeof statusCode !== "number" || statusCode < 100 || statusCode > 599) {
         statusCode = 500;
@@ -48,5 +51,6 @@ app.use((err, req, res, next) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/v1/users', userRoutes);
 
 export default app;

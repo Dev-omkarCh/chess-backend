@@ -13,40 +13,48 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: [true, "Password is required"],
     },
-    username : {
+    username: {
         type: String,
         required: true,
         unique: true,
         trim: true,
     },
-    fullName : {
+    fullName: {
         type: String,
     },
-    profilePicture : {
+    profilePicture: {
         type: String,
     },
-    bio : {
+    bio: {
         type: String,
     },
-    friends : {
-        type : [mongoose.Schema.Types.ObjectId],
-        default : [],
+    elo: {
+        type: Number,
+        default: 100,
     },
-    isVerified : {
+    friends: {
+        type: [mongoose.Schema.Types.ObjectId],
+        default: [],
+    },
+    isVerified: {
         type: Boolean,
         default: false,
     },
-    gender : {
+    gender: {
         type: String,
         enum: ["male", "female", "other"],
     },
-    refreshToken : {
+    refreshToken: {
         type: String,
     },
     role: {
         type: String,
         enum: ["user", "admin"],
         default: "user",
+    },
+    lastLogin: {
+        type: Date,
+        default: Date.now,
     }
 }, { timestamps: true });
 

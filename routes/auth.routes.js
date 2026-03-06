@@ -1,5 +1,5 @@
 import express from 'express';
-import { deleteProfile, getProfile, login, logout, refreshAccessToken, signup, updateProfile } from '../controllers/auth.controller.js';
+import { deleteProfile, getProfile, login, logout, signup, updateProfile } from '../controllers/auth.controller.js';
 import { verifyJWT } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
@@ -12,7 +12,6 @@ const router = express.Router();
 router.route("/signup").post(signup);
 router.route("/login").post(login);
 router.route("/logout").post(verifyJWT, logout);
-router.route("/refresh-token").get(refreshAccessToken);
 router.route("/profile")
     .get(verifyJWT, getProfile)
     .put(verifyJWT, updateProfile)
