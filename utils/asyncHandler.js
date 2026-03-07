@@ -14,9 +14,9 @@ const asyncHandler = (fn) => async (req, res, next) => {
     try {
         await fn(req, res, next);
     } catch (error) {
-        res.status(error.code || 500).json({
-            success : false,
-            message : error.message
+        res.status(error.statusCode || 500).json({
+            success: false,
+            message: error.message
         });
     };
 };
@@ -32,11 +32,11 @@ const asyncHandler = (fn) => async (req, res, next) => {
  * 
 */
 
-export const asyncPromiseHandler = (requestHandler) => {
-    (req, res, next) => {
+export const asyncHandlerPromise = (requestHandler) => {
+    return (req, res, next) => {
         Promise
-        .resolve(requestHandler(req, res, next))
-        .catch((error) => next(error));
+            .resolve(requestHandler(req, res, next))
+            .catch((error) => next(error));
     };
 };
 

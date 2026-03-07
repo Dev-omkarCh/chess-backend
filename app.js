@@ -1,17 +1,23 @@
 import express from 'express';
 import cors from 'cors';
+import { createServer } from 'http';
+import { initSocket } from './socket.js';
 // const helmet = require('helmet'); // Adds security headers
 // const morgan = require('morgan'); // Logs requests to the console
 
 const app = express();
+const httpServer = createServer(app);
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
 
 // Security Middleware
 // app.use(helmet()); 
 
+// Socket.io Setup
+initSocket(httpServer);
+
 // CORS Configuration
 app.use(cors({
-    origin: [FRONTEND_URL],
+    origin: "http://localhost:3000",
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
@@ -20,6 +26,7 @@ app.use(cors({
 // Body Parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
 // Logging (Helpful for debugging mobile requests)
 
@@ -29,7 +36,28 @@ app.use(express.urlencoded({ extended: false }));
 
 
 import authRoutes from './routes/auth.routes.js';
+import userRoutes from './routes/user.routes.js';
+import cookieParser from 'cookie-parser';
+
+app.use((err, req, res, next) => {
+    // 1. Determine the status code (Ensure it is a valid HTTP number)
+    let statusCode = err.statusCode || 500;
+
+    // 2. If it's a Mongoose/MongoDB error, it might not have a valid HTTP status
+    if (typeof statusCode !== "number" || statusCode < 100 || statusCode > 599) {
+        statusCode = 500;
+    }
+
+    // 3. Send the clean response
+    res.status(statusCode).json({
+        success: false,
+        message: err.message || "Internal Server Error",
+        errors: err.errors || []
+    });
+});
 
 app.use('/api/auth', authRoutes);
+app.use('/api/v1/users', userRoutes);
 
+export { httpServer }; // Add this named export
 export default app;
