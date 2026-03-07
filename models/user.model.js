@@ -13,57 +13,75 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: [true, "Password is required"],
     },
-    username : {
+    username: {
         type: String,
         required: true,
         unique: true,
         trim: true,
     },
-    fullName : {
+    fullName: {
         type: String,
     },
-    profilePicture : {
+    profilePicture: {
         type: String,
     },
-    bio : {
+    bio: {
         type: String,
     },
-    friends : {
-        type : [mongoose.Schema.Types.ObjectId],
-        default : [],
+    elo: {
+        type: Number,
+        default: 100,
     },
-    isVerified : {
+    friends: {
+        type: [mongoose.Schema.Types.ObjectId],
+        default: [],
+    },
+    isVerified: {
         type: Boolean,
         default: false,
     },
-    gender : {
+    gender: {
         type: String,
-        enum: ["Male", "Female", "Other"],
+        enum: ["male", "female", "other"],
     },
-    refreshTokens : {
-        type: [String],
-        default: [],
+    refreshToken: {
+        type: String,
+    },
+    role: {
+        type: String,
+        enum: ["user", "admin"],
+        default: "user",
+    },
+    lastLogin: {
+        type: Date,
+        default: Date.now,
     }
 }, { timestamps: true });
 
 // Hash password before saving
-userSchema.pre('save', async function (next) {
-    if (!this.isModified('password')) return next();
+userSchema.pre('save', async function () {
+    if (!this.isModified('password')) return;
     this.password = await bcryptjs.hash(this.password, 10);
-    next();
 });
 
 // Customize JSON output to exclude sensitive fields
 userSchema.set('toJSON', {
     transform: (doc, user) => {
         delete user.password;
-        delete user.refreshTokens;
+        delete user.refreshToken;
         delete user.__v; // Remove version key too!
         return user;
     }
 });
 
 // Custom Methods
+
+// It is used here because, if you ever decide to switch from bcryptjs to argon2 (a more modern hashing algorithm), 
+// you would have to search your entire project for every controller that uses bcrypt.compare()
+
+userSchema.methods.isPasswordCorrect = async function (password) {
+    return await bcryptjs.compare(password, this.password);
+}
 
 userSchema.methods.generateAccessToken = async function () {
     return jwt.sign(
