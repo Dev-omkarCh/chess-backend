@@ -4,6 +4,7 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import { generateAccessAndRefreshTokens } from "./auth.controller.js";
+import { cookieOptions } from "../config/cookieConfig.js";
 
 export const getCurrentUser = asyncHandler(async (req, res) => {
     const userId = req.user._id;
@@ -55,9 +56,6 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
 
         // 5. Generate NEW tokens (Rotation)
         const { accessToken, refreshToken: newRefreshToken } = await generateAccessAndRefreshTokens(user._id);
-
-        console.log(accessToken);
-        console.log(newRefreshToken);
 
         // 6. Send response
         return res

@@ -1,13 +1,19 @@
 import express from 'express';
 import cors from 'cors';
+import { createServer } from 'http';
+import { initSocket } from './socket.js';
 // const helmet = require('helmet'); // Adds security headers
 // const morgan = require('morgan'); // Logs requests to the console
 
 const app = express();
+const httpServer = createServer(app);
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
 
 // Security Middleware
 // app.use(helmet()); 
+
+// Socket.io Setup
+initSocket(httpServer);
 
 // CORS Configuration
 app.use(cors({
@@ -53,4 +59,5 @@ app.use((err, req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 
+export { httpServer }; // Add this named export
 export default app;
