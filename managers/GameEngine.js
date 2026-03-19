@@ -14,14 +14,17 @@ class GameEngine {
 
         // 2. Listen for Matchmaking
         socket.on('match:queue-join', (prefs) => {
+            console.log(`[GameEngine] User ${userId} attempted to join the queue with preferences:`, prefs);
             this.matchManager.handleJoinQueue(userId);
         });
 
         socket.on('game:join', ({ gameId }) => {
+            console.log(`[GameEngine] User ${userId} joined game: ${gameId}`);
             this.gameManager.handleJoinGame(socket, userId, gameId);
         });
 
         socket.on('match:queue-leave', () => {
+            console.log(`[GameEngine] User ${userId} left the queue`);
             this.matchManager.handleRemoveFromQueue(userId);
         });
 
