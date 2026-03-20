@@ -55,6 +55,10 @@ const userSchema = new mongoose.Schema({
     lastLogin: {
         type: Date,
         default: Date.now,
+    },
+    streaks: {
+        type: Number,
+        default: 0,
     }
 }, { timestamps: true });
 
@@ -63,6 +67,32 @@ userSchema.pre('save', async function () {
     if (!this.isModified('password')) return;
     this.password = await bcryptjs.hash(this.password, 10);
 });
+
+// Handle streaks logic before saving
+// userSchema.pre('save', function (next) {
+//     if (this.isModified('lastLogin')) {
+//         const now = new Date();
+//         const lastLogin = this.lastLogin || new Date(0);
+
+//         // Normalize both dates to midnight (00:00:00) to compare calendar days
+//         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+//         const lastDate = new Date(lastLogin.getFullYear(), lastLogin.getMonth(), lastLogin.getDate());
+
+//         const diffInMs = today - lastDate;
+//         const oneDayInMs = 24 * 60 * 60 * 1000;
+
+//         if (diffInMs === 0) {
+//             // Same calendar day: Keep streak as is
+//         } else if (diffInMs === oneDayInMs) {
+//             // Exactly the next calendar day: Increment
+//             this.streaks += 1;
+//         } else {
+//             // More than one day missed: Reset
+//             this.streaks = 1; // Usually, a login after a break starts a 1-day streak
+//         }
+//     }
+//     next();
+// });
 
 // Customize JSON output to exclude sensitive fields
 userSchema.set('toJSON', {
