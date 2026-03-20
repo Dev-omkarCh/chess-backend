@@ -8,7 +8,12 @@ const PORT = process.env.PORT || 3000;
 
 connectDb();
 
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : [];
+
 httpServer.listen(PORT, () => {
-    console.log(`\n[Server] Allowed Cors Origins : [ "${process.env.FRONTEND_URL}" ]`)
+    console.log(`[Server] Allowed Origins:`);
+    console.table(allowedOrigins);
     console.log(`[Server] Server is running on port ${PORT}\n`);
 });
