@@ -1,6 +1,8 @@
 import { Server } from 'socket.io';
-let io;
 import chalk from 'chalk';
+import GameEngine from './managers/GameEngine.js';
+
+let io;
 
 const initSocket = (server) => {
     io = new Server(server, {
@@ -13,20 +15,19 @@ const initSocket = (server) => {
         pingTimeout: 60000, // Handle mobile backgrounding better
     });
 
+    const engine = new GameEngine(io);
+
     io.on('connection', (socket) => {
-        // We get the userId from the query we set in the frontend
+
+        // get the userId from the query we set in the frontend
         const userId = socket.handshake.query.userId;
 
-        console.log(`🚀 User Connected: `, chalk.green(`${userId}`), `( Socket ID:`, chalk.blue(`${socket.id}`), ")");
+        console.log(`[Socket Connected] User ID: ${chalk.green(userId)} | Socket ID: ${chalk.yellow(socket.id)}`);
 
-        // Basic Join Room (User's private room for notifications/invites)
-        if (userId) {
-            socket.join(userId);
-        }
+        if (!userId) return socket.disconnect();
 
-        socket.on('disconnect', () => {
-            console.log(`User Disconnected: ${socket.id}`);
-        });
+        // Hand off all logic to the Engine
+        engine.handleConnection(socket, userId);
     });
 
     return io;
