@@ -17,11 +17,13 @@ initSocket(httpServer);
 
 // CORS Configuration
 app.use(cors({
-    origin: "http://localhost:3000",
+    origin: FRONTEND_URL,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
 }));
+
+app.set("trust proxy", 1);
 
 // Body Parsers
 app.use(express.json());
