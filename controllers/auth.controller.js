@@ -50,7 +50,7 @@ export const signup = asyncHandler(async (req, res) => {
 
     await Setting.create({ userId: newUser._id });
 
-    console.log("[Signup] New user created:", newUser._id);
+    console.log("[Signup] New user created:", newUser._id.toString());
     return res.status(200)
         .cookie("accessToken", accessToken, cookieOptions)
         .cookie("refreshToken", refreshToken, cookieOptions)
@@ -83,7 +83,7 @@ export const login = asyncHandler(async (req, res) => {
         lastLogin: new Date() // Update last login time
     }, { new: true });
 
-    console.log("[Login] User logged in:", updatedUser._id);
+    console.log("[Login] User logged in:", updatedUser._id.toString());
     return res.status(200)
         .cookie("refreshToken", refreshToken, cookieOptions)
         .cookie("accessToken", accessToken, cookieOptions)
@@ -104,7 +104,7 @@ export const logout = asyncHandler(async (req, res) => {
         { new: true }
     );
 
-    console.log("[Logout] User logged out:", req.user._id);
+    console.log("[Logout] User logged out:", req.user._id?.toString());
     return res
         .status(200)
         .clearCookie("refreshToken", cookieOptions)
