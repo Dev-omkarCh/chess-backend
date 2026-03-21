@@ -9,13 +9,15 @@ class MatchManager {
 
     handleUserConnect(userId, socketId) {
         this.userSocketMap.set(userId, socketId);
+        // console.log(`[Socket] User Added to Socket Map: ${chalk.green(userId)}`);
         // this.broadcastStats();
     }
 
     handleUserDisconnect(userId) {
         this.userSocketMap.delete(userId);
+        // console.log(`[Socket] User Removed from Socket Map: ${chalk.red(userId)}`);
         this.handleRemoveFromQueue(userId);
-        console.log(`[MatchManager] User Removed from Socket Map: ${chalk.red(userId)}`);
+        console.log(`[Socket Disconnected] User Id: ${chalk.red(userId)}`);
     }
 
     handleJoinQueue(userId) {
@@ -29,9 +31,11 @@ class MatchManager {
     }
 
     handleRemoveFromQueue(userId) {
-        this.queue = this.queue.filter(id => id !== userId);
-        console.log(`[MatchManager] User Removed from Queue: ${chalk.red(userId)} | Queue Length: ${chalk.yellow(this.queue.length)}`);
-        this.broadcastStats();
+        if (this.queue.includes(userId)) {
+            this.queue = this.queue.filter(id => id !== userId);
+            console.log(`[MatchManager] User Removed from Queue: ${chalk.red(userId)} | Queue Length: ${chalk.yellow(this.queue.length)}`);
+            this.broadcastStats();
+        }
     }
 
     tryMatch() {

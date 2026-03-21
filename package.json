@@ -10,7 +10,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon index.js",
+    "dev": "nodemon -r dotenv/config index.js",
     "start": "node index.js"
   },
   "dependencies": {

@@ -1,9 +1,16 @@
 import { cookieOptions } from "../config/cookieConfig.js";
+import Setting from "../models/setting.model.js";
 import User from "../models/user.model.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 
+/**
+ * 
+ * @param {*} userId 
+ * @returns {*} accessToken and refreshToken
+ * @description This function generates access and refresh tokens for a given user ID, saves the refresh token in the database, and returns both tokens. It is used in both the signup and login processes to ensure that the user receives valid tokens upon successful authentication.
+ */
 export const generateAccessAndRefreshTokens = async (userId) => {
     try {
         const user = await User.findById(userId);
@@ -41,6 +48,9 @@ export const signup = asyncHandler(async (req, res) => {
         refreshToken: refreshToken
     });
 
+    await Setting.create({ userId: newUser._id });
+
+    console.log("[Signup] New user created:", newUser._id.toString());
     return res.status(200)
         .cookie("accessToken", accessToken, cookieOptions)
         .cookie("refreshToken", refreshToken, cookieOptions)
@@ -69,6 +79,11 @@ export const login = asyncHandler(async (req, res) => {
     // Generate tokens 
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
 
+    const updatedUser = await User.findByIdAndUpdate(user._id, {
+        lastLogin: new Date() // Update last login time
+    }, { new: true });
+
+    console.log("[Login] User logged in:", updatedUser._id.toString());
     return res.status(200)
         .cookie("refreshToken", refreshToken, cookieOptions)
         .cookie("accessToken", accessToken, cookieOptions)
@@ -89,6 +104,7 @@ export const logout = asyncHandler(async (req, res) => {
         { new: true }
     );
 
+    console.log("[Logout] User logged out:", req.user._id?.toString());
     return res
         .status(200)
         .clearCookie("refreshToken", cookieOptions)
