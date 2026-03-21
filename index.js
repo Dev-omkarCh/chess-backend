@@ -15,5 +15,5 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 httpServer.listen(PORT, () => {
     console.log(`[Server] Allowed Origins:`);
     console.table(allowedOrigins);
-    console.log(`[Server] Server is running on port ${PORT}\n`);
+    console.log(`[Server] Server is running on port ${PORT}`);
 });
