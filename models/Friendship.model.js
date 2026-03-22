@@ -2,12 +2,12 @@ import mongoose from "mongoose";
 
 const FriendshipSchema = new mongoose.Schema({
     sender: {
-        type: Schema.Types.ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
     recipient: {
-        type: Schema.Types.ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
