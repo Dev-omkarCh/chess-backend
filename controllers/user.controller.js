@@ -74,3 +74,17 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
         throw new ApiError(401, error?.message || "Invalid refresh token");
     }
 });
+
+export const clearTokens = asyncHandler(async (req, res) => {
+    return res
+        .status(200)
+        .cookie("accessToken", "")
+        .cookie("refreshToken", "")
+        .json(
+            new ApiResponse(
+                200,
+                null,
+                "Cleared Tokens"
+            )
+        );
+});
