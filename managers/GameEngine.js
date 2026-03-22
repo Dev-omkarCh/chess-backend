@@ -1,5 +1,6 @@
 import MatchManager from './MatchManager.js';
 import GameManager from './GameManager.js';
+import Friendship from '../models/Friendship.model.js';
 
 class GameEngine {
     constructor(io) {
@@ -31,6 +32,26 @@ class GameEngine {
         // 3. Listen for Game Moves
         socket.on('game:move', (moveData) => {
             this.gameManager.handleMove(userId, moveData);
+        });
+
+        socket.on('social:get-online-friends', async () => {
+            const friendships = await Friendship.find({
+                $or: [{ sender: userId }, { recipient: userId }],
+                status: 'accepted'
+            }).populate('sender recipient', 'username avatar elo');
+
+            // 2. Filter for those currently in the Socket Map
+            const onlineFriends = friendships.map(f => {
+                const friend = f.sender._id.toString() === userId ? f.recipient : f.sender;
+                return {
+                    ...friend.toObject(),
+                    isOnline: engine.matchManager.userSocketMap.has(friend._id.toString()),
+                    // Bonus: Check if they are currently in a game
+                    isPlaying: engine.gameManager.userToGame.has(friend._id.toString())
+                };
+            });
+
+            socket.emit('social:online-friends-list', onlineFriends);
         });
 
         socket.on('disconnect', () => {
