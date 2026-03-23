@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { FriendshipSchema } from "./Friendship.model.js";
 
 const userSchema = new mongoose.Schema({
     email: {
@@ -33,7 +34,7 @@ const userSchema = new mongoose.Schema({
         default: 100,
     },
     friends: {
-        type: [mongoose.Schema.Types.ObjectId],
+        type: [FriendshipSchema],
         default: [],
     },
     isVerified: {

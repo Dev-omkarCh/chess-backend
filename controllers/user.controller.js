@@ -6,6 +6,10 @@ import jwt from "jsonwebtoken";
 import { generateAccessAndRefreshTokens } from "./auth.controller.js";
 import { cookieOptions } from "../config/cookieConfig.js";
 
+/**
+ * Get current user
+ * @route GET /api/users/current-user
+ */
 export const getCurrentUser = asyncHandler(async (req, res) => {
     const userId = req.user._id;
 
@@ -21,6 +25,10 @@ export const getCurrentUser = asyncHandler(async (req, res) => {
         );
 });
 
+/**
+ * Refresh access token
+ * @route POST /api/users/refresh-token
+ */
 export const refreshAccessToken = asyncHandler(async (req, res) => {
 
     // Get token from cookies or Authorization header (Bearer <token>)
@@ -75,6 +83,10 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
     }
 });
 
+/**
+ * Clear access and refresh tokens
+ * @route POST /api/users/clear-tokens
+ */
 export const clearTokens = asyncHandler(async (req, res) => {
     return res
         .status(200)
@@ -87,4 +99,41 @@ export const clearTokens = asyncHandler(async (req, res) => {
                 "Cleared Tokens"
             )
         );
+});
+
+/**
+ * Search for users by username or email
+ * @route GET /api/users/search?query=username
+ */
+export const searchUsers = asyncHandler(async (req, res) => {
+    const { query } = req.query;
+    const userId = req.user._id;
+
+    if (!query) {
+        throw new ApiError(400, "Search query is required");
+    }
+
+    // Find users that match the query (username or email)
+    // Exclude the current user and users they have blocked
+    const users = await User.find({
+        $and: [
+            {
+                $or: [
+                    { username: { $regex: query, $options: "i" } }, // case insensitive
+                    { email: { $regex: query, $options: "i" } } // case insensitive
+                ]
+            },
+            { _id: { $ne: userId } }, // exclude current user
+            { _id: { $nin: req.user.blocked } } // exclude blocked users
+        ]
+    }).select("username email friends fullName elo profilePicture")
+        .populate("friends", "username email profilePicture fullName elo");
+
+    if (!users) {
+        throw new ApiError(404, "No users found");
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, users, "Users fetched successfully"));
 });
