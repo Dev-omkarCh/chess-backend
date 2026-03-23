@@ -1,4 +1,5 @@
 import Friendship from "../models/Friendship.model.js";
+import { getIO } from "../socket.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
@@ -10,7 +11,7 @@ import asyncHandler from "../utils/asyncHandler.js";
  */
 export const sendFriendRequest = asyncHandler(async (req, res) => {
     const { recipientId } = req.body;
-    const senderId = req.user.id;
+    const senderId = req.user._id;
 
     if (senderId === recipientId) {
         throw new ApiError(400, "You cannot send a friend request to yourself");
@@ -23,25 +24,33 @@ export const sendFriendRequest = asyncHandler(async (req, res) => {
         ]
     });
 
+    console.log(existingRequest);
+
     if (existingRequest) {
         throw new ApiError(400, "Friend request already sent or accepted");
     }
 
-    const friendship = new Friendship({
+    const newRequest = await Friendship.create({
         sender: senderId,
         recipient: recipientId,
         status: 'pending'
     });
 
-    await friendship.save();
+    const io = getIO();
 
-    // Populate to return user details
-    await friendship.populate('sender', 'username email');
-    await friendship.populate('recipient', 'username email');
+    // Emit specifically to the recipient's private room (userId)
+    io.to(recipientId).emit('notification:new', {
+        _id: newRequest._id,
+        type: 'FRIEND_REQUEST',
+        message: `New friend request from ${req.user?.username}`,
+        senderName: req.user?.username || req.user?.email || req.user?._id,
+        payload: {},
+        timestamp: newRequest.createdAt
+    });
 
     return res
         .status(201)
-        .json(new ApiResponse(201, friendship, "Friend request sent successfully"));
+        .json(new ApiResponse(201, {}, "Friend request sent successfully"));
 });
 
 /**
@@ -86,7 +95,7 @@ export const updateRequest = asyncHandler(async (req, res) => {
  * @description Get all pending friend requests
  */
 export const getPendingRequests = asyncHandler(async (req, res) => {
-    const userId = req.user.id;
+    const userId = req.user._id;
 
     const requests = await Friendship.find({
         recipient: userId,
@@ -231,4 +240,15 @@ export const unblockUser = asyncHandler(async (req, res) => {
     return res
         .status(200)
         .json(new ApiResponse(200, blocked, "User unblocked successfully"));
+});
+
+// Dev only
+export const clearFriendships = asyncHandler(async (req, res) => {
+    await Friendship.deleteMany({});
+
+    res
+        .status(200)
+        .json(
+            new ApiResponse(200, {}, "Clear All FriendShips")
+        );
 });

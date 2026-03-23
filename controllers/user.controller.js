@@ -5,6 +5,7 @@ import ApiResponse from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import { generateAccessAndRefreshTokens } from "./auth.controller.js";
 import { cookieOptions } from "../config/cookieConfig.js";
+import mongoose from "mongoose";
 
 /**
  * Get current user
@@ -107,33 +108,79 @@ export const clearTokens = asyncHandler(async (req, res) => {
  */
 export const searchUsers = asyncHandler(async (req, res) => {
     const { query } = req.query;
-    const userId = req.user._id;
+    const currentUserId = req.user._id;
 
     if (!query) {
         throw new ApiError(400, "Search query is required");
     }
 
-    // Find users that match the query (username or email)
-    // Exclude the current user and users they have blocked
-    const users = await User.find({
-        $and: [
-            {
-                $or: [
-                    { username: { $regex: query, $options: "i" } }, // case insensitive
-                    { email: { $regex: query, $options: "i" } } // case insensitive
-                ]
-            },
-            { _id: { $ne: userId } }, // exclude current user
-            { _id: { $nin: req.user.blocked } } // exclude blocked users
-        ]
-    }).select("username email friends fullName elo profilePicture")
-        .populate("friends", "username email profilePicture fullName elo");
+    const currentObjId = new mongoose.Types.ObjectId(String(currentUserId));
 
-    if (!users) {
-        throw new ApiError(404, "No users found");
-    }
+    const results = await User.aggregate([
+        {
+            $match: {
+                username: { $regex: query, $options: 'i' },
+                _id: { $ne: currentObjId }
+            }
+        },
+        { $limit: 15 },
+        {
+            $lookup: {
+                from: 'friendships',
+                let: { searchedId: '$_id', me: currentObjId },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $and: [
+                                    // Use 'recipient' here to match your DB schema
+                                    { $or: [{ $eq: ['$sender', '$$searchedId'] }, { $eq: ['$recipient', '$$searchedId'] }] },
+                                    { $or: [{ $eq: ['$sender', '$$me'] }, { $eq: ['$recipient', '$$me'] }] }
+                                ]
+                            }
+                        }
+                    }
+                ],
+                as: 'friendship'
+            }
+        },
+        {
+            $addFields: {
+                friendship: { $arrayElemAt: ['$friendship', 0] }
+            }
+        },
+        {
+            $project: {
+                username: 1,
+                profilePicture: 1,
+                elo: 1,
+                fullName: 1,
+                // Logic for mapping status
+                status: {
+                    $cond: {
+                        if: { $not: ['$friendship'] },
+                        then: 'not_friend',
+                        else: {
+                            $cond: {
+                                if: { $eq: ['$friendship.status', 'pending'] },
+                                then: {
+                                    $cond: [
+                                        { $eq: ['$friendship.sender', currentObjId] },
+                                        'request_sent',
+                                        'request_received'
+                                    ]
+                                },
+                                else: '$friendship.status' // Returns 'accepted', 'rejected', or 'blocked'
+                            }
+                        }
+                    }
+                },
+                sentByMe: { $eq: ['$friendship.sender', currentObjId] }
+            }
+        }
+    ]);
 
     return res
         .status(200)
-        .json(new ApiResponse(200, users, "Users fetched successfully"));
+        .json(new ApiResponse(200, results, "Users fetched successfully"));
 });

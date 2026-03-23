@@ -7,7 +7,8 @@ import {
     getBlockedUsers,
     getPendingRequests,
     updateRequest,
-    removeFriend
+    removeFriend,
+    clearFriendships
 } from "../controllers/friend.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 
@@ -27,5 +28,8 @@ router.get('/blocked', verifyJWT, getBlockedUsers);
 router
     .post('/block/:userId', verifyJWT, blockUser)
     .delete('/block/:userId', verifyJWT, unblockUser);
+
+// danger : only dev
+router.get("/clear", clearFriendships);
 
 export default router;
