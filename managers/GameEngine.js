@@ -46,9 +46,9 @@ class GameEngine {
                 const friend = f.sender._id.toString() === userId ? f.recipient : f.sender;
                 return {
                     ...friend.toObject(),
-                    isOnline: engine.matchManager.userSocketMap.has(friend._id.toString()),
+                    isOnline: this.matchManager.userSocketMap.has(friend._id.toString()),
                     // Bonus: Check if they are currently in a game
-                    isPlaying: engine.gameManager.userToGame.has(friend._id.toString())
+                    isPlaying: this.gameManager.userToGame.has(friend._id.toString())
                 };
             });
 

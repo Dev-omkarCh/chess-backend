@@ -1,5 +1,5 @@
 import Friendship from "../models/Friendship.model.js";
-import { getIO } from "../socket.js";
+import { getGameEngine, getIO } from "../socket.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
@@ -101,16 +101,26 @@ export const getPendingRequests = asyncHandler(async (req, res) => {
         recipient: userId,
         status: 'pending'
     })
-        .populate('sender', 'username email')
+        .populate('sender', 'username elo avatar')
         .sort({ createdAt: -1 });
 
     if (!requests) {
         throw new ApiError(404, "No friend requests found");
     }
 
+    const notification = requests.map(req => ({
+        _id: req._id,
+        sender: req.sender,
+        isRead: req.status !== 'pending',
+        message: `New friend request from ${req.sender.username}`,
+        type: 'FRIEND_REQUEST',
+        timestamp: req.createdAt,
+        payload: {}
+    }));
+
     return res
         .status(200)
-        .json(new ApiResponse(200, requests, "Friend requests fetched successfully"));
+        .json(new ApiResponse(200, notification, "Friend requests fetched successfully"));
 });
 
 /**
@@ -120,28 +130,49 @@ export const getPendingRequests = asyncHandler(async (req, res) => {
 export const getFriends = asyncHandler(async (req, res) => {
     const userId = req.user.id;
 
+    // Fetch friendships where the user is either sender or recipient
     const friendships = await Friendship.find({
         $or: [
             { sender: userId, status: 'accepted' },
             { recipient: userId, status: 'accepted' }
         ]
     })
-        .populate('sender', 'username email')
-        .populate('recipient', 'username email');
+        // Ensure we populate all fields required for the final response
+        .populate('sender', 'username email avatar elo fullName isVerified lastLogin')
+        .populate('recipient', 'username email avatar elo fullName isVerified lastLogin');
 
-    // Format the response to easily get friend details
-    const friends = friendships.map(f => {
-        const friend = f.sender._id.toString() === userId ? f.recipient : f.sender;
+    const gameEngine = getGameEngine();
+    const userSocketMap = gameEngine?.matchManager?.userSocketMap; // Access the userSocketMap to determine online status
+
+    if (!userSocketMap) {
+        // throw new ApiError(500, "Failed to access user socket map");
+        console.log("Warning: userSocketMap not available, defaulting all friends to offline");
+    }
+
+    // Extract the "other" person from the friendship object
+    const formattedFriends = friendships.map(f => {
+        // Determine which side of the relationship is the friend
+        const friendData = f.sender._id.toString() === userId.toString()
+            ? f.recipient
+            : f.sender;
+
+        // 4. Return the exact structure requested
         return {
-            ...friend,
-            friendshipId: f._id,
-            status: f.status
+            _id: friendData._id,
+            username: friendData.username,
+            email: friendData.email,
+            avatar: friendData.avatar,
+            elo: friendData.elo || 0, // Fallback if elo isn't set
+            fullName: friendData.fullName || friendData.username,
+            isOnline: userSocketMap ? userSocketMap.has(friendData._id.toString()) : false,
+            isVerified: friendData.isVerified,
+            lastOnline: friendData.lastLogin ? friendData.lastLogin.toISOString() : null
         };
     });
 
     return res
         .status(200)
-        .json(new ApiResponse(200, friends, "Friends fetched successfully"));
+        .json(new ApiResponse(200, formattedFriends, "Friends fetched successfully"));
 });
 
 /**
