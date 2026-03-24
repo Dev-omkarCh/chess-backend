@@ -12,7 +12,7 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: [true, "Password is required"],
+        // required: [true, "Password is required"], // Optional: Google users don't have one
     },
     username: {
         type: String,
@@ -23,7 +23,7 @@ const userSchema = new mongoose.Schema({
     fullName: {
         type: String,
     },
-    profilePicture: {
+    avatar: {
         type: String,
     },
     bio: {
@@ -60,6 +60,24 @@ const userSchema = new mongoose.Schema({
     streaks: {
         type: Number,
         default: 0,
+    },
+    googleId: {
+        type: String,
+        unique: true,
+        sparse: true, // Allow multiple users without googleId
+    },
+    authProvider: {
+        type: String,
+        enum: ["email", "google"],
+        default: "email",
+    },
+    aiCredits: {
+        type: Number,
+        default: 5
+    },
+    isVerified: {
+        type: Boolean,
+        default: false
     }
 }, { timestamps: true });
 
