@@ -1,5 +1,5 @@
 import express from 'express';
-import { deleteProfile, getProfile, login, logout, signup, updateProfile } from '../controllers/auth.controller.js';
+import { deleteProfile, getProfile, googleAuth, login, logout, signup, updateProfile } from '../controllers/auth.controller.js';
 import { verifyJWT } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
@@ -16,5 +16,7 @@ router.route("/profile")
     .get(verifyJWT, getProfile)
     .put(verifyJWT, updateProfile)
     .delete(verifyJWT, deleteProfile);
+
+router.route("/google").post(googleAuth);
 
 export default router;

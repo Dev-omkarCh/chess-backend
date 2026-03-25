@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import GameEngine from './managers/GameEngine.js';
 
 let io;
+let engine;
 
 const initSocket = (server) => {
     io = new Server(server, {
@@ -15,7 +16,7 @@ const initSocket = (server) => {
         pingTimeout: 60000, // Handle mobile backgrounding better
     });
 
-    const engine = new GameEngine(io);
+    engine = new GameEngine(io);
 
     io.on('connection', (socket) => {
 
@@ -39,5 +40,12 @@ export const getIO = () => {
     }
     return io;
 };
+
+export const getGameEngine = () => {
+    if (!engine) {
+        throw new Error("Game Engine not initialized!");
+    }
+    return engine;
+}
 
 export { initSocket }

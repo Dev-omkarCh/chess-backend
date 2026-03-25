@@ -11,6 +11,7 @@ class GameEngine {
 
     handleConnection(socket, userId) {
         // 1. Tell MatchManager user is online
+        socket.join(userId); // Join a private room for this userId to receive targeted events
         this.matchManager.handleUserConnect(userId, socket.id);
 
         // 2. Listen for Matchmaking
@@ -45,9 +46,9 @@ class GameEngine {
                 const friend = f.sender._id.toString() === userId ? f.recipient : f.sender;
                 return {
                     ...friend.toObject(),
-                    isOnline: engine.matchManager.userSocketMap.has(friend._id.toString()),
+                    isOnline: this.matchManager.userSocketMap.has(friend._id.toString()),
                     // Bonus: Check if they are currently in a game
-                    isPlaying: engine.gameManager.userToGame.has(friend._id.toString())
+                    isPlaying: this.gameManager.userToGame.has(friend._id.toString())
                 };
             });
 
@@ -55,6 +56,7 @@ class GameEngine {
         });
 
         socket.on('disconnect', () => {
+            socket.leave(userId);
             this.matchManager.handleUserDisconnect(userId);
         });
     }
