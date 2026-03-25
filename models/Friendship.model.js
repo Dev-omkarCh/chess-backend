@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const FriendshipSchema = new mongoose.Schema({
+export const FriendshipSchema = new mongoose.Schema({
     sender: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

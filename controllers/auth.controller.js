@@ -4,6 +4,14 @@ import User from "../models/user.model.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
+import { OAuth2Client } from "google-auth-library";
+import jwt from "jsonwebtoken";
+
+const googleClient = new OAuth2Client(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_REDIRECT_URI
+);
 
 /**
  * 
@@ -115,3 +123,57 @@ export const logout = asyncHandler(async (req, res) => {
 export const getProfile = asyncHandler(async (req, res) => { });
 export const updateProfile = asyncHandler(async (req, res) => { });
 export const deleteProfile = asyncHandler(async (req, res) => { });
+
+/**
+ * @URL /api/v1/auth/google
+ * @method POST
+ * @description This function handles Google authentication by verifying the Google ID token, creating a new user if the user doesn't exist, or updating the existing user with the latest Google data. It then generates access and refresh tokens and returns them along with the user information.
+ */
+export const googleAuth = async (req, res) => {
+    const { token } = req.body; // The token from Frontend
+
+    // console.log(`[Google Login] Credential: ${credential}`);
+    try {
+        // Verify with Google
+        const googleRes = await fetch(
+            `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`
+        );
+        const { email, sub: googleId, name, picture } = await googleRes.json();
+
+        if (!email) throw new Error("Invalid Google Token");
+
+        console.log(`[Google Login] Email: ${email}, Google ID: ${googleId}, Name: ${name}, Picture: ${picture}`);
+        // Account Linking Logic
+        let user = await User.findOne({ email });
+
+        if (user) {
+            // If user exists but doesn't have Google linked, link it now
+            if (!user.googleId) {
+                user.googleId = googleId;
+                user.authProvider = 'google';
+                await user.save({ validateBeforeSave: false });
+            }
+        } else {
+            // Create New User
+            user = await User.create({
+                username: name,
+                email,
+                googleId,
+                avatar: picture,
+                authProvider: 'google',
+            });
+
+            await Setting.create({ userId: user._id });
+        }
+
+        // Issue your OWN JWT for your platform
+        const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+
+        res.status(200)
+            .cookie("accessToken", accessToken, cookieOptions)
+            .cookie("refreshToken", refreshToken, cookieOptions)
+            .json(new ApiResponse(200, { accessToken, user }, "Google Auth successful"));
+    } catch (error) {
+        res.status(401).json(new ApiResponse(401, {}, error.message));
+    }
+};
