@@ -42,8 +42,9 @@ export const sendFriendRequest = asyncHandler(async (req, res) => {
     io.to(recipientId).emit('notification:new', {
         _id: newRequest._id,
         type: 'FRIEND_REQUEST',
+        isRead: false,
         message: `New friend request from ${req.user?.username}`,
-        senderName: req.user?.username || req.user?.email || req.user?._id,
+        sender: req.user,
         payload: {},
         timestamp: newRequest.createdAt
     });

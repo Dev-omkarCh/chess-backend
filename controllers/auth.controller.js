@@ -49,7 +49,14 @@ export const signup = asyncHandler(async (req, res) => {
         throw new ApiError(409, "User with email or username already exists");
     }
 
-    const newUser = await User.create({ username, email, password, gender, fullName });
+    const avatarGender = gender === "female" ? "girl" : "boy";
+
+    const boyProfilePic = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${username}&hair=short01&beardProbability=100`;
+    const girlProfilePic = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${username}&hair=long01&beardProbability=0`;
+
+    const avatar = avatarGender === "boy" ? boyProfilePic : girlProfilePic;
+
+    const newUser = await User.create({ username, email, password, gender, fullName, avatar });
 
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(newUser._id);
     const user = await User.findByIdAndUpdate(newUser._id, {
