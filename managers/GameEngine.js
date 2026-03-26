@@ -1,6 +1,7 @@
 import MatchManager from './MatchManager.js';
 import GameManager from './GameManager.js';
 import Friendship from '../models/Friendship.model.js';
+import User from '../models/user.model.js';
 
 class GameEngine {
     constructor(io) {
@@ -35,24 +36,22 @@ class GameEngine {
             this.gameManager.handleMove(userId, moveData);
         });
 
-        socket.on('social:get-online-friends', async () => {
-            const friendships = await Friendship.find({
-                $or: [{ sender: userId }, { recipient: userId }],
-                status: 'accepted'
-            }).populate('sender recipient', 'username avatar elo');
+        socket.on('social:get-online-friends', ({ friendIds }) => {
+            // No Database Query Needed! 
+            // Just check your in-memory Map for these specific IDs
+            const onlineStatuses = friendIds.map(id => {
+                const isOnline = this.matchManager.userSocketMap.has(id);
+                if (isOnline) {
+                    return {
+                        _id: id,
+                        isOnline: true,
+                        isPlaying: this.gameManager.userToGame.has(id)
+                    };
+                }
+                return null;
+            }).filter(Boolean);
 
-            // 2. Filter for those currently in the Socket Map
-            const onlineFriends = friendships.map(f => {
-                const friend = f.sender._id.toString() === userId ? f.recipient : f.sender;
-                return {
-                    ...friend.toObject(),
-                    isOnline: this.matchManager.userSocketMap.has(friend._id.toString()),
-                    // Bonus: Check if they are currently in a game
-                    isPlaying: this.gameManager.userToGame.has(friend._id.toString())
-                };
-            });
-
-            socket.emit('social:online-friends-list', onlineFriends);
+            socket.emit('social:online-friends-list', onlineStatuses);
         });
 
         socket.on('disconnect', () => {

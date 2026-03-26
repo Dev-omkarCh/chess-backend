@@ -152,7 +152,7 @@ export const searchUsers = asyncHandler(async (req, res) => {
         {
             $project: {
                 username: 1,
-                profilePicture: 1,
+                avatar: 1,
                 elo: 1,
                 fullName: 1,
                 // Logic for mapping status
