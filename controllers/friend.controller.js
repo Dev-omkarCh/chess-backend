@@ -1,4 +1,5 @@
 import Friendship from "../models/Friendship.model.js";
+import User from "../models/user.model.js";
 import { getGameEngine, getIO } from "../socket.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
@@ -39,7 +40,7 @@ export const sendFriendRequest = asyncHandler(async (req, res) => {
     const io = getIO();
 
     // Emit specifically to the recipient's private room (userId)
-    io.to(recipientId).emit('notification:new', {
+    io.to(recipientId.toString()).emit('notification:new', {
         _id: newRequest._id,
         type: 'FRIEND_REQUEST',
         isRead: false,
@@ -65,6 +66,8 @@ export const updateRequest = asyncHandler(async (req, res) => {
     const { status } = req.body;
     const userId = req.user.id;
 
+    console.log(`[Friend Request] User ${req.user?._id} has ${status === "accepted" ? "accepted" : "rejected"} friend request ${requestId}`);
+
     const friendship = await Friendship.findById(requestId);
 
     if (!friendship) {
@@ -80,15 +83,56 @@ export const updateRequest = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Request is not pending");
     }
 
+    const sender = await User.findById(userId);
+    const recipient = await User.findById(friendship.sender);
+
+    const gameEngine = getGameEngine();
+    const io = getIO();
+    const userSocketMap = gameEngine?.matchManager?.userSocketMap;
+
+    if (status === 'accepted') {
+        io.to(friendship.sender.toString()).emit('notification:new', {
+            _id: friendship._id,
+            type: 'FRIEND_REQUEST_ACCEPTED',
+            message: `${req.user?.username} accepted your friend request`,
+            sender: req.user,
+            payload: {
+                friend: {
+                    ...sender.toObject(),
+                    isOnline: userSocketMap ? userSocketMap.has(sender._id.toString()) : false,
+                    lastOnline: sender.lastLogin ? sender.lastLogin : null
+                }
+            },
+            timestamp: friendship.updatedAt
+        });
+    }
+
+    if (status === 'rejected') {
+        io.to(friendship.sender.toString()).emit('notification:new', {
+            _id: friendship._id,
+            type: 'FRIEND_REQUEST_REJECTED',
+            message: `${req.user?.username} rejected your friend request`,
+            sender: req.user,
+            payload: {},
+            timestamp: friendship.updatedAt
+        });
+    }
+
     friendship.status = status;
     await friendship.save();
 
     await friendship.populate('sender', 'username email');
     await friendship.populate('recipient', 'username email');
 
+    const friend = {
+        ...recipient.toObject(),
+        isOnline: userSocketMap ? userSocketMap.has(recipient._id.toString()) : false,
+        lastOnline: recipient.lastLogin ? recipient.lastLogin : null
+    };
+
     return res
         .status(200)
-        .json(new ApiResponse(200, friendship, "Friend request updated successfully"));
+        .json(new ApiResponse(200, friend, "Friend request updated successfully"));
 });
 
 /**
