@@ -1,4 +1,6 @@
+import { Challenge } from "../models/Challenge.model.js";
 import Friendship from "../models/Friendship.model.js";
+import Notifications from "../models/Notification.model.js";
 import User from "../models/user.model.js";
 import { getGameEngine, getIO } from "../socket.js";
 import ApiError from "../utils/ApiError.js";
@@ -14,7 +16,7 @@ export const sendFriendRequest = asyncHandler(async (req, res) => {
     const { recipientId } = req.body;
     const senderId = req.user._id;
 
-    if (senderId === recipientId) {
+    if (senderId.equals(recipientId)) {
         throw new ApiError(400, "You cannot send a friend request to yourself");
     }
 
@@ -25,30 +27,34 @@ export const sendFriendRequest = asyncHandler(async (req, res) => {
         ]
     });
 
-    console.log(existingRequest);
+    console.log("[Send Friend Request] Existing Request ID: ", existingRequest?._id);
 
     if (existingRequest) {
         throw new ApiError(400, "Friend request already sent or accepted");
     }
 
-    const newRequest = await Friendship.create({
+    const friendship = await Friendship.create({
         sender: senderId,
         recipient: recipientId,
         status: 'pending'
     });
 
+    const notification = await Notifications.create({
+        recipient: recipientId,
+        sender: senderId,
+        category: 'social',
+        event: 'request',
+        message: `New friend request from ${req.user?.username}`,
+        relatedId: friendship._id,
+        onModel: 'Friendship',
+    });
+
     const io = getIO();
 
     // Emit specifically to the recipient's private room (userId)
-    io.to(recipientId.toString()).emit('notification:new', {
-        _id: newRequest._id,
-        type: 'FRIEND_REQUEST',
-        isRead: false,
-        message: `New friend request from ${req.user?.username}`,
-        sender: req.user,
-        payload: {},
-        timestamp: newRequest.createdAt
-    });
+    io.to(recipientId.toString()).emit('notification:new', notification);
+
+    console.log(`[Friend Request] User ${req.user?._id} sent friend request to recipient ${recipientId}`);
 
     return res
         .status(201)
@@ -316,6 +322,40 @@ export const unblockUser = asyncHandler(async (req, res) => {
     return res
         .status(200)
         .json(new ApiResponse(200, blocked, "User unblocked successfully"));
+});
+
+export const challengeFriend = asyncHandler(async (req, res) => {
+    const { challenge } = req.body;
+    const { friendId } = req.params;
+    const userId = req.user._id;
+
+    if (!userId) {
+        throw new ApiError(400, "Unauthorized");
+    }
+
+    if (!friendId) {
+        throw new ApiError(400, "Can't Challenge without FriendId");
+    }
+
+    if (!challenge || !challenge.friend || !challenge.type || !challenge.timeControl || !challenge.side || !challenge.chatEnabled) {
+        throw new ApiError(400, "Challenge Object is not Valid");
+    }
+
+    const newChallenge = await Challenge.create({
+        sender: userId,
+        type: challenge.type,
+        recipient: challenge.friend._id,
+        timeControl: challenge.timeControl,
+        side: challenge.side,
+        isChatEnabled: challenge.isChatEnabled
+    });
+
+    // Notification
+
+    console.log("New Challenge: ", newChallenge);
+    return res.status(201).json(
+        new ApiResponse(201, newChallenge, "Challenge Created!")
+    );
 });
 
 // Dev only

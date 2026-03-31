@@ -13,12 +13,16 @@ import mongoose from "mongoose";
  */
 export const getCurrentUser = asyncHandler(async (req, res) => {
     const userId = req.user._id;
+    console.log(req.user);
 
     if (!userId) {
         throw new ApiError(401, "Unauthorized request");
     }
+    console.log(userId);
 
-    const user = await User.findById(req.user._id).select("-password -refreshToken");
+    const user = await User.findById(userId).select("-password -refreshToken");
+
+    console.log(user);
 
     return res.status(200)
         .json(
@@ -183,4 +187,25 @@ export const searchUsers = asyncHandler(async (req, res) => {
     return res
         .status(200)
         .json(new ApiResponse(200, results, "Users fetched successfully"));
+});
+
+/**
+ * Get user by id
+ * @route GET /api/users/:id
+ */
+export const getUserProfile = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    if (!id) {
+        throw new ApiError(400, "User Id is required");
+    }
+
+    const user = await User.findById(id);
+
+    if (!user) {
+        throw new ApiError(400, "User Not found");
+    }
+
+    return res.status(200)
+        .json(new ApiResponse(200, user, "User Profile found"));
 });

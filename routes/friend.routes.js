@@ -8,7 +8,8 @@ import {
     getPendingRequests,
     updateRequest,
     removeFriend,
-    clearFriendships
+    clearFriendships,
+    challengeFriend
 } from "../controllers/friend.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 
@@ -22,6 +23,8 @@ router.patch('/requests/:requestId', verifyJWT, updateRequest);
 // FRIENDS (The established relationship)
 router.get('/', verifyJWT, getFriends);
 router.delete('/:friendId', verifyJWT, removeFriend);
+
+router.post("/:friendId/challenge", verifyJWT, challengeFriend);
 
 // BLOCKING (Safety & Privacy)
 router.get('/blocked', verifyJWT, getBlockedUsers);
