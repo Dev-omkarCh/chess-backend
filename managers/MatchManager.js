@@ -4,10 +4,16 @@ import Friendship from "../models/Friendship.model.js";
 class MatchManager {
     constructor(engine) {
         this.engine = engine;
-        this.queue = [];
+        this.queues = new Map();
+        this.userPreferences = new Map(); // userId -> preferences
         this.userSocketMap = new Map(); // userId -> socketId
     }
 
+    /**
+     * Handles the connection of a user to the match manager.
+     * @param {string} userId 
+     * @param {string} socketId 
+     */
     handleUserConnect(userId, socketId) {
         this.userSocketMap.set(userId, socketId);
         this.notifyFriendsOnlineStatus(userId, true);
@@ -57,10 +63,14 @@ class MatchManager {
         console.log(`[Socket Disconnected] User Id: ${chalk.red(userId)}`);
     }
 
-    handleJoinQueue(userId) {
-        if (!this.queue.includes(userId)) {
-            this.queue.push(userId);
-            console.log(`[MatchManager] User Joined Queue: ${chalk.green(userId)} | Queue Length: ${chalk.yellow(this.queue.length)}`);
+    handleJoinQueue(userId, prefs) {
+        if (!this.queues.has(prefs.timeControl)) {
+            this.queues.set(prefs.timeControl, []);
+        }
+        if (!this.queues.get(prefs.timeControl).includes(userId)) {
+            this.queues.get(prefs.timeControl).push(userId);
+            this.userPreferences.set(userId, prefs);
+            console.log(`[MatchManager] User Joined Queue: ${chalk.green(userId)} | Queue Length: ${chalk.yellow(this.queues.get(prefs.timeControl).length)}`);
             this.broadcastStats();
             console.log(`[MatchManager] Attempting to match users...`);
             this.tryMatch();
@@ -68,9 +78,10 @@ class MatchManager {
     }
 
     handleRemoveFromQueue(userId) {
-        if (this.queue.includes(userId)) {
-            this.queue = this.queue.filter(id => id !== userId);
-            console.log(`[MatchManager] User Removed from Queue: ${chalk.red(userId)} | Queue Length: ${chalk.yellow(this.queue.length)}`);
+        const queue = this.queues.get(this.userPreferences.get(userId)?.timeControl);
+        if (queue.includes(userId)) {
+            queue = queue.filter(id => id !== userId);
+            console.log(`[MatchManager] User Removed from Queue: ${chalk.red(userId)} | Queue Length: ${chalk.yellow(queue.length)}`);
             this.broadcastStats();
         }
     }
@@ -81,8 +92,22 @@ class MatchManager {
             return;
         }
         while (this.queue.length >= 2) {
+
             const p1 = this.queue.shift();
             const p2 = this.queue.shift();
+
+            const p1Prefs = this.userPreferences.get(p1);
+            const p2Prefs = this.userPreferences.get(p2);
+
+            while (p1Prefs.timeControl !== p2Prefs.timeControl) {
+                p2 = this.queue.shift();
+                p2Prefs = this.userPreferences.get(p2);
+            }
+
+            if (!p1Prefs || !p2Prefs) {
+                console.log(`[MatchManager] Could not find preferences for users ${p1} or ${p2}`);
+                return;
+            }
 
             // Tell the Engine to create the game
             this.engine.gameManager.createGame(p1, p2);
@@ -94,7 +119,7 @@ class MatchManager {
     broadcastStats() {
         this.engine.io.emit('match:update-stats', {
             onlineCount: this.userSocketMap.size,
-            inQueueCount: this.queue.length
+            inQueueCount: this.queues.values().reduce((acc, queue) => acc + queue.length, 0)
         });
     }
 }

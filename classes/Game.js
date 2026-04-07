@@ -1,13 +1,14 @@
 import { Chess } from 'chess.js';
 
 export class Game {
-    constructor(gameId, p1, p2, io) {
+    constructor(gameId, p1, p2, io, prefs) {
         this.gameId = gameId;
         this.white = p1; // p1 is white
         this.black = p2;
         this.io = io;
         this.board = new Chess();
         this.moveHistory = [];
+        this.prefs = prefs;
     }
 
     makeMove(userId, move) {
