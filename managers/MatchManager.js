@@ -8,53 +8,8 @@ class MatchManager {
         this.userSocketMap = new Map(); // userId -> socketId
     }
 
-    handleUserConnect(userId, socketId) {
-        this.userSocketMap.set(userId, socketId);
-        this.notifyFriendsOnlineStatus(userId, true);
-        // console.log(`[Socket] User Added to Socket Map: ${chalk.green(userId)}`);
-        // this.broadcastStats();
-    }
-
-    async notifyFriendsOnlineStatus(userId, isOnline) {
-        // Get all friends of this user
-        const friendships = await Friendship.find({
-            $or: [{ sender: userId }, { recipient: userId }],
-            status: 'accepted'
-        }).select('sender recipient');
-
-        // 2. Extract the Friend IDs
-        const friendIds = friendships.map(f =>
-            f.sender.toString() === userId ? f.recipient.toString() : f.sender.toString()
-        );
-
-        if (!friendIds || friendIds.length === 0) {
-            console.log("[NOTIFY] No Friends to Notify");
-            return;
-        }
-
-        // 3. For every friend, check if they are currently connected
-        friendIds.forEach(friendId => {
-            const friendSocketId = this.userSocketMap?.get(friendId);
-
-            if (friendSocketId) {
-                console.log(`[NOTIFY] User ${userId} friend SocketId ${friendSocketId}`)
-                // 4. Emit ONLY to that specific friend's socket
-                // Sending as an array to keep it compatible with your existing Redux action
-                this.engine.io.to(friendSocketId).emit('social:online-friends-list', [{
-                    _id: userId,
-                    isOnline: isOnline,
-                    isPlaying: this.engine.gameManager.userToGame.has(userId)
-                }]);
-            }
-        });
-    }
-
     async handleUserDisconnect(userId) {
-        await this.notifyFriendsOnlineStatus(userId, false);
-        this.userSocketMap.delete(userId);
-        // console.log(`[Socket] User Removed from Socket Map: ${chalk.red(userId)}`);
         this.handleRemoveFromQueue(userId);
-        console.log(`[Socket Disconnected] User Id: ${chalk.red(userId)}`);
     }
 
     handleJoinQueue(userId) {
