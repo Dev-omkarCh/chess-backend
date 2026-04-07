@@ -9,7 +9,7 @@ class GameManager {
 
     createGame(p1, p2) {
         const gameId = `game_${Date.now()}`;
-        const newGame = new Game(gameId, p1, p2, this.engine.io);
+        const newGame = new Game(gameId, p1, p2, this.engine.io, this.engine.prefs);
 
         this.games.set(gameId, newGame);
         this.userToGame.set(p1, gameId);
@@ -27,7 +27,8 @@ class GameManager {
         this.engine.io.to(gameId).emit('match:found', {
             gameId,
             white: p1,
-            black: p2
+            black: p2,
+            prefs: this.engine.prefs
         });
     }
 

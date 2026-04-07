@@ -8,6 +8,12 @@ class GameEngine {
         this.io = io;
         this.matchManager = new MatchManager(this);
         this.gameManager = new GameManager(this);
+        this.prefs = {
+            type: 'ranked',
+            timeControl: '10+0',
+            isChatEnabled: true,
+            color: 'random'
+        }
     }
 
     handleConnection(socket, userId) {
@@ -18,7 +24,8 @@ class GameEngine {
         // 2. Listen for Matchmaking
         socket.on('match:queue-join', (prefs) => {
             console.log(`[GameEngine] User ${userId} attempted to join the queue with preferences:`, prefs);
-            this.matchManager.handleJoinQueue(userId);
+            this.prefs = prefs;
+            this.matchManager.handleJoinQueue(userId, prefs);
         });
 
         socket.on('game:join', ({ gameId }) => {
