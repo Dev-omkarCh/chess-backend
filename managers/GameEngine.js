@@ -22,12 +22,11 @@ class GameEngine {
 
         // Listen for Matchmaking
         socket.on('match:queue-join', (prefs) => {
-            console.log(`[GameEngine] User ${userId} attempted to join the queue with preferences:`, prefs);
-            this.matchManager.handleJoinQueue(userId);
+            this.matchManager.handleJoinQueue(userId, prefs);
         });
 
         socket.on('game:join', ({ gameId }) => {
-            console.log(`[GameEngine] User ${userId} joined game: ${gameId}`);
+            console.log(`\n[GameEngine] User ${userId} joined game: ${gameId}`);
             this.gameManager.handleJoinGame(socket, userId, gameId);
         });
 
@@ -104,7 +103,9 @@ class GameEngine {
                 }
             }
 
-            console.log(`[Social] Notified friends of ${userId} about their online status`);
+            if (friendIds.length > 0) {
+                console.log(`[Social] Notified ${friendIds.length} friends of ${userId} about their online status`);
+            }
         } catch (error) {
             console.error(`[Social Error] Failed to notify friends for ${userId}:`, error);
         }

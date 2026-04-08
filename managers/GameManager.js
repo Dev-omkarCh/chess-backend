@@ -7,17 +7,17 @@ class GameManager {
         this.userToGame = new Map(); // userId -> gameId
     }
 
-    createGame(p1, p2) {
+    createGame(p1, p2, prefs) {
         const gameId = `game_${Date.now()}`;
-        const newGame = new Game(gameId, p1, p2, this.engine.io);
+        const newGame = new Game(gameId, p1, p2, this.engine.io, prefs);
 
         this.games.set(gameId, newGame);
         this.userToGame.set(p1, gameId);
         this.userToGame.set(p2, gameId);
 
         // Tell users to join the socket room for this specific game
-        const s1 = this.engine.matchManager.userSocketMap.get(p1);
-        const s2 = this.engine.matchManager.userSocketMap.get(p2);
+        const s1 = this.engine.userSocketMap.get(p1);
+        const s2 = this.engine.userSocketMap.get(p2);
 
         // Put them in a private room
         this.engine.io.sockets.sockets.get(s1)?.join(gameId);
@@ -27,7 +27,8 @@ class GameManager {
         this.engine.io.to(gameId).emit('match:found', {
             gameId,
             white: p1,
-            black: p2
+            black: p2,
+            prefs
         });
     }
 
@@ -42,7 +43,6 @@ class GameManager {
 
     handleJoinGame(socket, userId, gameId) {
         const game = this.games.get(gameId);
-        console.log(`[Game Join Attempt] User ID: ${userId} is attempting to join Game ID: ${gameId}`);
         if (!game) {
             console.log(`[Game Join Failed] User ID: ${userId} attempted to join non-existent Game ID: ${gameId}`);
             socket.emit('game:error', { message: "Game not found" });
@@ -58,7 +58,9 @@ class GameManager {
             white: game.white,
             black: game.black,
             color: game.white === userId ? 'w' : 'b', // Determine color on the fly
-            history: game.board.history()
+            history: game.moveHistory,
+            timeControl: game.timeControl,
+            type: game.type
         });
     }
 }
