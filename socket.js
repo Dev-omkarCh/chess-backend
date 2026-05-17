@@ -22,9 +22,6 @@ const initSocket = (server) => {
 
         // get the userId from the query we set in the frontend
         const userId = socket.handshake.query.userId;
-
-        console.log(`[Socket Connected] User ID: ${chalk.green(userId)} | Socket ID: ${chalk.yellow(socket.id)}`);
-
         if (!userId) return socket.disconnect();
 
         // Hand off all logic to the Engine

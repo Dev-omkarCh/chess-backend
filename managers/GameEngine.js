@@ -1,28 +1,41 @@
 import MatchManager from './MatchManager.js';
 import GameManager from './GameManager.js';
+import UserManager from './userManager.js';
 import Friendship from '../models/Friendship.model.js';
-import User from '../models/user.model.js';
 
 class GameEngine {
     constructor(io) {
         this.io = io;
+        this.userSocketMap = new Map();
         this.matchManager = new MatchManager(this);
         this.gameManager = new GameManager(this);
+        this.userManager = new UserManager(this);
     }
 
-    handleConnection(socket, userId) {
-        // 1. Tell MatchManager user is online
-        socket.join(userId); // Join a private room for this userId to receive targeted events
-        this.matchManager.handleUserConnect(userId, socket.id);
+    async handleConnection(socket, userId) {
 
-        // 2. Listen for Matchmaking
-        socket.on('match:queue-join', (prefs) => {
-            console.log(`[GameEngine] User ${userId} attempted to join the queue with preferences:`, prefs);
-            this.matchManager.handleJoinQueue(userId);
+        // console.log(`[Socket Connected] User ID: ${chalk.green(userId)} | Socket ID: ${chalk.yellow(socket.id)}`);
+        console.log(`Socket Connected 🚀`);
+        socket.join(userId);
+
+        // Add user to the map
+        this.userSocketMap.set(userId, socket.id);
+
+        // Notify friends that this user is online
+        await this.notifyFriendsOnlineStatus(userId, true);
+
+        // Listen for Matchmaking
+        socket.on('match:queue-join', async ({ preferences, userDetails }) => {
+            if (!userDetails.elo) {
+                console.log(`[GameEngine] User ${userId} has no ELO.`);
+                return;
+            }
+            this.userManager.addUser(userId, userDetails.elo);
+            this.matchManager.handleJoinQueue(userId, preferences);
         });
 
         socket.on('game:join', ({ gameId }) => {
-            console.log(`[GameEngine] User ${userId} joined game: ${gameId}`);
+            console.log(`\n[GameEngine] User ${userId} joined game: ${gameId}`);
             this.gameManager.handleJoinGame(socket, userId, gameId);
         });
 
@@ -40,7 +53,7 @@ class GameEngine {
             // No Database Query Needed! 
             // Just check your in-memory Map for these specific IDs
             const onlineStatuses = friendIds.map(id => {
-                const isOnline = this.matchManager.userSocketMap.has(id);
+                const isOnline = this.userSocketMap.has(id);
                 if (isOnline) {
                     return {
                         _id: id,
@@ -56,8 +69,56 @@ class GameEngine {
 
         socket.on('disconnect', () => {
             socket.leave(userId);
+            delete this.userSocketMap[userId];
+            this.notifyFriendsOnlineStatus(userId, false);
             this.matchManager.handleUserDisconnect(userId);
+            this.userManager.removeUser(userId);
         });
+    }
+
+    /**
+     * Notifies friends of a user about their online status
+     * @param {string} userId - The ID of the user
+     * @param {boolean} isOnline - The online status of the user
+     */
+    async notifyFriendsOnlineStatus(userId, isOnline) {
+        try {
+            // Fetch friends (Consider caching this list if user reconnects often)
+            const friendships = await Friendship.find({
+                $or: [{ sender: userId }, { recipient: userId }],
+                status: 'accepted'
+            }).select('sender recipient');
+
+            const friendIds = friendships.map(f =>
+                f.sender.toString() === userId ? f.recipient.toString() : f.sender.toString()
+            );
+
+            if (!friendIds.length) return;
+
+            // Pre-calculate the status ONCE, not inside the loop
+            // This prevents the "Race Condition" where isPlaying changes mid-loop
+            const statusUpdate = [{
+                _id: userId,
+                isOnline: isOnline,
+                isPlaying: this.gameManager.userToGame.has(userId)
+            }];
+
+            // Use for...of for cleaner async flow control
+            for (const friendId of friendIds) {
+                const friendSocketId = this.userSocketMap.get(friendId);
+
+                if (friendSocketId) {
+                    // Emit to the friend's socket
+                    this.io.to(friendSocketId).emit('social:online-friends-list', statusUpdate);
+                }
+            }
+
+            // if (friendIds.length > 0) {
+            // console.log(`[Social] Notified ${friendIds.length} friends of ${userId} about their online status`);
+            // }
+        } catch (error) {
+            console.error(`[Social Error] Failed to notify friends for ${userId}:`, error);
+        }
     }
 }
 
