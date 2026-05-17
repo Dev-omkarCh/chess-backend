@@ -1,5 +1,6 @@
 import MatchManager from './MatchManager.js';
 import GameManager from './GameManager.js';
+import UserManager from './userManager.js';
 import Friendship from '../models/Friendship.model.js';
 
 class GameEngine {
@@ -8,10 +9,13 @@ class GameEngine {
         this.userSocketMap = new Map();
         this.matchManager = new MatchManager(this);
         this.gameManager = new GameManager(this);
+        this.userManager = new UserManager(this);
     }
 
     async handleConnection(socket, userId) {
 
+        // console.log(`[Socket Connected] User ID: ${chalk.green(userId)} | Socket ID: ${chalk.yellow(socket.id)}`);
+        console.log(`Socket Connected 🚀`);
         socket.join(userId);
 
         // Add user to the map
@@ -21,8 +25,13 @@ class GameEngine {
         await this.notifyFriendsOnlineStatus(userId, true);
 
         // Listen for Matchmaking
-        socket.on('match:queue-join', (prefs) => {
-            this.matchManager.handleJoinQueue(userId, prefs);
+        socket.on('match:queue-join', async ({ preferences, userDetails }) => {
+            if (!userDetails.elo) {
+                console.log(`[GameEngine] User ${userId} has no ELO.`);
+                return;
+            }
+            this.userManager.addUser(userId, userDetails.elo);
+            this.matchManager.handleJoinQueue(userId, preferences);
         });
 
         socket.on('game:join', ({ gameId }) => {
@@ -44,7 +53,7 @@ class GameEngine {
             // No Database Query Needed! 
             // Just check your in-memory Map for these specific IDs
             const onlineStatuses = friendIds.map(id => {
-                const isOnline = this.matchManager.userSocketMap.has(id);
+                const isOnline = this.userSocketMap.has(id);
                 if (isOnline) {
                     return {
                         _id: id,
@@ -63,6 +72,7 @@ class GameEngine {
             delete this.userSocketMap[userId];
             this.notifyFriendsOnlineStatus(userId, false);
             this.matchManager.handleUserDisconnect(userId);
+            this.userManager.removeUser(userId);
         });
     }
 
@@ -103,9 +113,9 @@ class GameEngine {
                 }
             }
 
-            if (friendIds.length > 0) {
-                console.log(`[Social] Notified ${friendIds.length} friends of ${userId} about their online status`);
-            }
+            // if (friendIds.length > 0) {
+            // console.log(`[Social] Notified ${friendIds.length} friends of ${userId} about their online status`);
+            // }
         } catch (error) {
             console.error(`[Social Error] Failed to notify friends for ${userId}:`, error);
         }
