@@ -53,6 +53,7 @@ app.use(cookieParser());
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 import friendRoutes from './routes/friend.routes.js';
+import paymentRoutes from './routes/payment.routes.js';
 import cookieParser from 'cookie-parser';
 
 app.use((err, req, res, next) => {
@@ -75,6 +76,7 @@ app.use((err, req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/friends', friendRoutes);
+app.use('/api/v1/payment', paymentRoutes);
 
 export { httpServer }; // Add this named export
 export default app;
