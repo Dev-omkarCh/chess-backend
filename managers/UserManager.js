@@ -4,7 +4,7 @@ class UserManager {
         this.users = new Map(); // Key: userId, Value: { elo: Number, gameId: String }
     }
 
-    async addUser(userId, elo) {
+    addUser(userId, elo) {
         this.users.set(userId, { elo });
         console.log(`[UserManager] User ${userId} added with ELO ${elo}`);
     }

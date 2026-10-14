@@ -44,10 +44,13 @@ export const signup = asyncHandler(async (req, res) => {
         throw new ApiError(400, "All fields are required");
     }
     // Check if user with the same username or email already exists
+    console.log("1");
     const existedUser = await User.findOne({ $or: [{ username }, { email }] });
     if (existedUser) {
         throw new ApiError(409, "User with email or username already exists");
     }
+
+    console.log("2");
 
     const avatarGender = gender === "female" ? "girl" : "boy";
 
@@ -56,7 +59,9 @@ export const signup = asyncHandler(async (req, res) => {
 
     const avatar = avatarGender === "boy" ? boyProfilePic : girlProfilePic;
 
+    console.log("3");
     const newUser = await User.create({ username, email, password, gender, fullName, avatar });
+    console.log("4");
 
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(newUser._id);
     const user = await User.findByIdAndUpdate(newUser._id, {

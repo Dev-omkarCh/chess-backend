@@ -25,12 +25,21 @@ class GameEngine {
         await this.notifyFriendsOnlineStatus(userId, true);
 
         // Listen for Matchmaking
+        /* 
+           preferences : { 
+              timeControl : "3+0" | "5+0" | "5+5" | "10+0", 
+              type: "rated" | "unrated" 
+           }
+        */
+
         socket.on('match:queue-join', async ({ preferences, userDetails }) => {
             if (!userDetails.elo) {
                 console.log(`[GameEngine] User ${userId} has no ELO.`);
                 return;
             }
             this.userManager.addUser(userId, userDetails.elo);
+
+            // TODO: Add Elo Range Check for Fair Matching
             this.matchManager.handleJoinQueue(userId, preferences);
         });
 
