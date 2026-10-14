@@ -1,4 +1,5 @@
 import { Game } from '../classes/Game.js';
+import gameModel from '../models/game.model.js';
 
 class GameManager {
     constructor(engine) {
@@ -7,29 +8,61 @@ class GameManager {
         this.userToGame = new Map(); // userId -> gameId
     }
 
-    createGame(p1, p2, prefs) {
-        const gameId = `game_${Date.now()}`;
-        const newGame = new Game(gameId, p1, p2, this.engine.io, prefs);
+    async createGame(p1, p2, prefs) {
 
-        this.games.set(gameId, newGame);
-        this.userToGame.set(p1, gameId);
-        this.userToGame.set(p2, gameId);
+        try {
+            // Randomize colors fairly (50/50 chance)
+            const isP1White = Math.random() < 0.5;
+            const whitePlayer = isP1White ? p1 : p2;
+            const blackPlayer = isP1White ? p2 : p1;
 
-        // Tell users to join the socket room for this specific game
-        const s1 = this.engine.userSocketMap.get(p1);
-        const s2 = this.engine.userSocketMap.get(p2);
+            // CREATE DATABASE RECORD IMMEDIATELY (Status: ongoing)
+            const dbGame = await gameModel.create({
+                whitePlayer: whitePlayer,
+                blackPlayer: blackPlayer,
+                status: 'ongoing',
+                timeControl: prefs.timeControl,
+                type: prefs.type || 'rated',
+                pgn: '',
+                moves: [],
+            });
 
-        // Put them in a private room
-        this.engine.io.sockets.sockets.get(s1)?.join(gameId);
-        this.engine.io.sockets.sockets.get(s2)?.join(gameId);
+            const gameId = dbGame?._id.toString();
 
-        // Emit match found
-        this.engine.io.to(gameId).emit('match:found', {
-            gameId,
-            white: p1,
-            black: p2,
-            prefs
-        });
+            const newGame = new Game(gameId, whitePlayer, blackPlayer, this.engine.io, prefs, dbGame);
+
+
+
+            this.games.set(gameId, newGame);
+            this.userToGame.set(p1, gameId);
+            this.userToGame.set(p2, gameId);
+
+            const s1 = this.engine.userSocketMap.get(p1);
+            const s2 = this.engine.userSocketMap.get(p2);
+
+            this.engine.io.sockets.sockets.get(s1)?.join(gameId);
+            this.engine.io.sockets.sockets.get(s2)?.join(gameId);
+
+            // Emit match found with specific color per player or unified payload
+            this.engine.io.to(p1).emit('match:found', {
+                gameId,
+                color: whitePlayer === p1 ? 'w' : 'b',
+                opponent: whitePlayer === p1 ? p2 : p1,
+                prefs
+            });
+
+            this.engine.io.to(p2).emit('match:found', {
+                gameId,
+                color: whitePlayer === p2 ? 'w' : 'b',
+                opponent: whitePlayer === p2 ? p2 : p1,
+                prefs
+            });
+
+            console.log(`[Game Created & Saved to DB] ID: ${gameId} | White: ${whitePlayer} vs Black: ${blackPlayer}`);
+        }
+        catch (error) {
+            console.error('[GameManager Error] Failed to create and save game to DB:', error);
+        }
     }
 
     handleMove(userId, moveData) {

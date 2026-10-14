@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-export const FriendshipSchema = new mongoose.Schema({
+const friendshipSchema = new mongoose.Schema({
     sender: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -16,11 +16,11 @@ export const FriendshipSchema = new mongoose.Schema({
         enum: ['pending', 'accepted', 'rejected', 'blocked'],
         default: 'pending',
     },
-
 }, { timestamps: true });
-const Friendship = mongoose.model("Friendship", FriendshipSchema);
 
-// Optimization: Ensure a user cannot send multiple requests to the same person
-FriendshipSchema.index({ sender: 1, recipient: 1 }, { unique: true });
+// Ensure a user cannot send multiple requests to the same person
+friendshipSchema.index({ sender: 1, recipient: 1 }, { unique: true });
+
+const Friendship = mongoose.model("Friendship", friendshipSchema);
 
 export default Friendship;
