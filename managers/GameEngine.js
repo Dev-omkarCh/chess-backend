@@ -1,6 +1,6 @@
 import MatchManager from './MatchManager.js';
 import GameManager from './GameManager.js';
-import UserManager from './userManager.js';
+import UserManager from './UserManager.js';
 import Friendship from '../models/Friendship.model.js';
 
 class GameEngine {
